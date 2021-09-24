@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<settings>
+    <category label="Általános">
+        <setting label="Találati lista nézet" type="enum" id="mainview" values="Nincs állítás|Lista|Nagy lista|Minikép|Poszter|Fanart|Médiainfó|Médiainfó 2|Médiainfó 3" default="0"/>
+        <setting label="Stream lista nézet" type="enum" id="streamview" values="Nincs állítás|Lista|Nagy lista|Minikép|Poszter|Fanart|Médiainfó|Médiainfó 2|Médiainfó 3" default="0"/>		
+		<setting label="Weboldal címe" type="text" id="mcs_url" default="https://mozicsillag.me"/>
+		<setting id="clear_cache" type="action" label="[COLOR blue]Gyorsítótár megtisztítása[/COLOR]" default="" action="RunPlugin(plugin://plugin.video.mozicsillag/?mode=14)"/>
+	</category>
+</settings>
