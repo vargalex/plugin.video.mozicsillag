@@ -1,8 +1,7 @@
 ﻿<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.mozicsillag" name="Mozicsillag" version="0.1.2" provider-name="Mr. Hankey">
+<addon id="plugin.video.mozicsillag" name="Mozicsillag" version="0.1.3" provider-name="Mr. Hankey">
 	<requires>
-		<import addon="xbmc.python" version="2.1.0"/>
-		<import addon="script.module.urlresolver" version="3.0.0" />
+		<import addon="script.module.resolveurl" version="5.1.00" />
 	</requires>
 	<extension point="xbmc.python.pluginsource" library="default.py">
 		<provides>video</provides>
@@ -12,5 +11,8 @@
 		<language>hu</language>
 		<description lang="en">A Mozicsillag kiegészítővel egyszerűen férhetsz hozzá a mozicsillag.me oldalon található tartalomhoz.</description>
 		<platform>all</platform>
+		<assets>
+			<icon>icon.png</icon>
+		</assets>
 	</extension>
 </addon>

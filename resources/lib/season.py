@@ -19,18 +19,26 @@
 '''
 
 
-import os,sys,re,json,zipfile,StringIO,urllib,urllib2,urlparse,base64,datetime
+import os,sys,re,json,zipfile,datetime
 
 from resources.lib import control
 from resources.lib import client
 from resources.lib import cache
+from resources.lib import utils
+
+if sys.version_info[0] == 3:
+    from io import BytesIO as StringIO
+    from urllib import request as urllib2
+else:
+    from StringIO import StringIO
+    import urllib2
 
 
 
 class seasons:
     def __init__(self):
         self.lang = 'hu'
-        self.tvdb_key = base64.urlsafe_b64decode('MjgyM0VEMTNCQkVERURDOA==')
+        self.tvdb_key = '2823ED13BBEDEDC8'
 
         self.tvdb_info_link = 'http://thetvdb.com/api/%s/series/%s/all/%s.zip' % (self.tvdb_key, '%s', '%s')
         self.tvdb_by_imdb = 'http://thetvdb.com/api/GetSeriesByRemoteID.php?imdbid=%s'
@@ -40,6 +48,7 @@ class seasons:
 
     def tvdb_list(self, meta, act_season):
         imdb = meta['imdb']
+
         try:
             if not imdb == '0':
                 url = self.tvdb_by_imdb % imdb
@@ -51,7 +60,7 @@ class seasons:
 
                 try: name = client.parseDOM(result, 'SeriesName')[0]
                 except: name = '0'
-                name = name.encode('utf-8')
+                name = utils.py2_encode(name)
                 if not name == '0': meta.update({'tvshowtitle': name})
                 dupe = re.compile('[***]Duplicate (\d*)[***]').findall(name)
                 if len(dupe) > 0: tvdb = str(dupe[0])
@@ -67,31 +76,31 @@ class seasons:
             url = self.tvdb_info_link % (tvdb, 'en')
             data = urllib2.urlopen(url, timeout=30).read()
 
-            zip = zipfile.ZipFile(StringIO.StringIO(data))
-            result = zip.read('%s.xml' % 'en')
-            artwork = zip.read('banners.xml')
+            zip = zipfile.ZipFile(StringIO(data))
+            result = zip.read('%s.xml' % 'en').decode()
+            artwork = zip.read('banners.xml').decode()
             zip.close()
 
             dupe = client.parseDOM(result, 'SeriesName')[0]
             dupe = re.compile('[***]Duplicate (\d*)[***]').findall(dupe)
 
             if len(dupe) > 0:
-                tvdb = str(dupe[0]).encode('utf-8')
+                tvdb = utils.py2_encode(str(dupe[0]))
 
                 url = self.tvdb_info_link % (tvdb, 'en')
                 data = urllib2.urlopen(url, timeout=30).read()
 
-                zip = zipfile.ZipFile(StringIO.StringIO(data))
-                result = zip.read('%s.xml' % 'en')
-                artwork = zip.read('banners.xml')
+                zip = zipfile.ZipFile(StringIO(data))
+                result = zip.read('%s.xml' % 'en').decode()
+                artwork = zip.read('banners.xml').decode()
                 zip.close()
 
             if not self.lang == 'en':
                 url = self.tvdb_info_link % (tvdb, self.lang)
                 data = urllib2.urlopen(url, timeout=30).read()
 
-                zip = zipfile.ZipFile(StringIO.StringIO(data))
-                result2 = zip.read('%s.xml' % self.lang)
+                zip = zipfile.ZipFile(StringIO(data))
+                result2 = zip.read('%s.xml' % self.lang).decode()
                 zip.close()
             else:
                 result2 = result
@@ -113,21 +122,21 @@ class seasons:
             if not poster == '': poster = self.tvdb_image + poster
             else: poster = '0'
             poster = client.replaceHTMLCodes(poster)
-            poster = poster.encode('utf-8')
+            poster = utils.py2_encode(poster)
 
             try: banner = client.parseDOM(item, 'banner')[0]
             except: banner = ''
             if not banner == '': banner = self.tvdb_image + banner
             else: banner = '0'
             banner = client.replaceHTMLCodes(banner)
-            banner = banner.encode('utf-8')
+            banner = utils.py2_encode(banner)
 
             try: fanart = client.parseDOM(item, 'fanart')[0]
             except: fanart = ''
             if not fanart == '': fanart = self.tvdb_image + fanart
             else: fanart = '0'
             fanart = client.replaceHTMLCodes(fanart)
-            fanart = fanart.encode('utf-8')
+            fanart = utils.py2_encode(fanart)
             if not fanart == '0': meta.update({'fanart': fanart})
 
             if not poster == '0': pass
@@ -147,41 +156,41 @@ class seasons:
             genre = ' / '.join(genre)
             if genre == '': genre = '0'
             genre = client.replaceHTMLCodes(genre)
-            genre = genre.encode('utf-8')
+            genre = utils.py2_encode(genre)
             if not genre == '0': meta.update({'genre': genre})
 
             try: duration = client.parseDOM(item, 'Runtime')[0]
             except: duration = ''
             if duration == '': duration = '0'
             duration = client.replaceHTMLCodes(duration)
-            duration = duration.encode('utf-8')
+            duration = utils.py2_encode(duration)
             if not duration == '0' and meta['duration'] =='0': meta.update({'duration': duration})
 
             try: rating = client.parseDOM(item, 'Rating')[0]
             except: rating = ''
             if rating == '': rating = '0'
             rating = client.replaceHTMLCodes(rating)
-            rating = rating.encode('utf-8')
+            rating = utils.py2_encode(rating)
             if not rating == '0': meta.update({'rating': rating})
 
             try: votes = client.parseDOM(item, 'RatingCount')[0]
             except: votes = '0'
             if votes == '': votes = '0'
             votes = client.replaceHTMLCodes(votes)
-            votes = votes.encode('utf-8')
+            votes = utils.py2_encode(votes)
             if not votes == '0': meta.update({'votes': votes})
 
             try: mpaa = client.parseDOM(item, 'ContentRating')[0]
             except: mpaa = ''
             if mpaa == '': mpaa = '0'
             mpaa = client.replaceHTMLCodes(mpaa)
-            mpaa = mpaa.encode('utf-8')
+            mpaa = utils.py2_encode(mpaa)
             if not mpaa == '0': meta.update({'mpaa': mpaa})
 
             try: cast = client.parseDOM(item, 'Actors')[0]
             except: cast = ''
             cast = [x for x in cast.split('|') if not x == '']
-            try: cast = [(x.encode('utf-8'), '') for x in cast]
+            try: cast = [(utils.py2_encode(x), '') for x in cast]
             except: cast = []
             if cast == []: cast = '0'
             if not cast == '0': meta.update({'cast': cast})
@@ -189,14 +198,14 @@ class seasons:
             try: label = client.parseDOM(item2, 'SeriesName')[0]
             except: label = '0'
             label = client.replaceHTMLCodes(label)
-            label = label.encode('utf-8')
+            label = utils.py2_encode(label)
             if not nabel == '0': meta.update({'label': label})
 
             try: plot = client.parseDOM(item2, 'Overview')[0]
             except: plot = ''
             if plot == '': plot = '0'
             plot = client.replaceHTMLCodes(plot)
-            plot = plot.encode('utf-8')
+            plot = utils.py2_encode(plot)
             if not plot == '0': meta.update({'plot': plot})
         except:
             pass
@@ -206,11 +215,11 @@ class seasons:
             premiered = client.parseDOM(item, 'FirstAired')[0]
             if premiered == '' or '-00' in premiered: premiered = '0'
             premiered = client.replaceHTMLCodes(premiered)
-            premiered = premiered.encode('utf-8')
+            premiered = utils.py2_encode(premiered)
             if not premiered == '0': meta.update({'premiered': premiered})
 
             season = '%01d' % int(act_season)
-            season = season.encode('utf-8')
+            season = utils.py2_encode(season)
 
             thumb = [i for i in artwork if client.parseDOM(i, 'Season')[0] == season]
             try: thumb = client.parseDOM(thumb[0], 'BannerPath')[0]
@@ -218,7 +227,7 @@ class seasons:
             if not thumb == '': thumb = self.tvdb_image + thumb
             else: thumb = '0'
             thumb = client.replaceHTMLCodes(thumb)
-            thumb = thumb.encode('utf-8')
+            thumb = utils.py2_encode(thumb)
 
             if thumb == '0': thumb = poster
             if not thumb == '0': meta.update({'thumb': thumb})

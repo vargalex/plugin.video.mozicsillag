@@ -71,11 +71,14 @@ skinPath = xbmc.translatePath('special://skin/')
 
 addonPath = xbmc.translatePath(addonInfo('path'))
 
-dataPath = xbmc.translatePath(addonInfo('profile')).decode('utf-8')
+try:
+    dataPath = xbmc.translatePath(addonInfo('profile')).decode('utf-8')
+except:
+    dataPath = xbmc.translatePath(addonInfo('profile'))
 
 playlistFile = os.path.join(dataPath, 'playlist.db')
 
-historyFile = os.path.join(dataPath, 'history.db')
+favoritesFile = os.path.join(dataPath, 'favorites.db')
 
 playcountFile = os.path.join(dataPath, 'playcount.db')
 
@@ -83,19 +86,17 @@ cacheFile = os.path.join(dataPath, 'cache.db')
 
 metaFile = os.path.join(dataPath, 'meta.db')
 
-
 def addonIcon():
     try: return os.path.join(addonInfo('path'), 'icon.png')
     except: pass
 
 
-def addonFanart():
-    try: return os.path.join(addonInfo('path'), 'fanart.jpg')
+def artPath():
+    try: return os.path.join(addonInfo('path'), 'resources', 'media')
     except: pass
 
 
-def infoDialog(message, heading='', icon='', time=3000):
-    if heading == '': heading=addonInfo('name')
+def infoDialog(message, heading=addonInfo('name'), icon='', time=3000):
     if icon == '': icon = addonIcon()
     try: dialog.notification(heading, message, icon, time, sound=False)
     except: execute("Notification(%s,%s, %s, %s)" % (heading, message, time, icon))
@@ -141,8 +142,14 @@ def refresh():
 def idle():
     return execute('Dialog.Close(busydialog)')
 
+
 def busy():
     return execute('ActivateWindow(busydialog)')
 
+
 def queueItem():
     return execute('Action(Queue)')
+
+def addonFanart():
+    try: return os.path.join(addonInfo('path'), 'fanart.jpg')
+    except: pass

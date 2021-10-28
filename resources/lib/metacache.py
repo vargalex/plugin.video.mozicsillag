@@ -8,6 +8,7 @@ except:
     from pysqlite2 import dbapi2 as database
 
 from resources.lib import control
+from resources.lib import utils
 
 
 def get(function, timeout, *args, **table):
@@ -18,7 +19,7 @@ def get(function, timeout, *args, **table):
         f = re.sub('.+\smethod\s|.+function\s|\sat\s.+|\sof\s.+', '', f)
 
         a = hashlib.md5()
-        for i in args: a.update(str(i))
+        for i in args: a.update(str(i).encode("utf-8"))
         a = str(a.hexdigest())
     except:
         pass
@@ -35,7 +36,7 @@ def get(function, timeout, *args, **table):
         dbcur.execute("SELECT * FROM %s WHERE func = '%s' AND args = '%s'" % (table, f, a))
         match = dbcur.fetchone()
 
-        response = eval(match[2].encode('utf-8'))
+        response = eval(utils.py2_encode(match[2]))
 
         t1 = int(match[3])
         t2 = int(time.time())
@@ -45,14 +46,14 @@ def get(function, timeout, *args, **table):
     except:
         pass
 
-    try:
+    #try:
         r = function(*args)
         if (r == None or r == []) and not response == None:
             return response
         elif (r == None or r == []):
             return r
-    except:
-        return
+    #except:
+    #    return
 
     try:
         r = repr(r)
@@ -63,9 +64,8 @@ def get(function, timeout, *args, **table):
         dbcon.commit()
     except:
         pass
-
     try:
-        return eval(r.encode('utf-8'))
+        return eval(utils.py2_encode(r))
     except:
         pass
 

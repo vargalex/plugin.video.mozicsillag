@@ -1,15 +1,21 @@
 # -*- coding: utf-8 -*-
 
-import os,sys,re,zipfile,StringIO,urllib2,base64
-
+import os,sys,re,zipfile #,StringIO,urllib2
 from resources.lib import control
 from resources.lib import client
 from resources.lib import cache
+from resources.lib import utils
 
+if sys.version_info[0] == 3:
+    from io import BytesIO as StringIO
+    from urllib import request as urllib2
+else:
+    from StringIO import StringIO
+    import urllib2
 
 class seasons:
     def __init__(self):
-        self.tvdb_key = base64.urlsafe_b64decode('MjgyM0VEMTNCQkVERURDOA==')
+        self.tvdb_key = '2823ED13BBEDEDC8'
         self.tvdb_info_link = 'http://thetvdb.com/api/%s/series/%s/all/%s.zip' % (self.tvdb_key, '%s', '%s')
         self.tvdb_by_imdb = 'http://thetvdb.com/api/GetSeriesByRemoteID.php?imdbid=%s'
         self.tvdb_image = 'http://thetvdb.com/banners/'
@@ -37,38 +43,34 @@ class seasons:
         except:
             return meta
 
-
         try:
             if tvdb == '0': return meta
 
             url = self.tvdb_info_link % (tvdb, 'en')
             
             data = urllib2.urlopen(url, timeout=30).read()
-
-            zip = zipfile.ZipFile(StringIO.StringIO(data))
-            result = zip.read('%s.xml' % 'en')
-            artwork = zip.read('banners.xml')
+            zip = zipfile.ZipFile(StringIO(data))
+            result = zip.read('%s.xml' % 'en').decode()
+            artwork = zip.read('banners.xml').decode()
             zip.close()
     
             dupe = client.parseDOM(result, 'SeriesName')[0]
             dupe = re.compile('[***]Duplicate (\d*)[***]').findall(dupe)
 
             if len(dupe) > 0:
-                tvdb = str(dupe[0]).encode('utf-8')
+                tvdb = utils.py2_encode(str(dupe[0]))
     
                 url = self.tvdb_info_link % (tvdb, 'en')
                 data = urllib2.urlopen(url, timeout=30).read()
-    
-                zip = zipfile.ZipFile(StringIO.StringIO(data))
-                result = zip.read('%s.xml' % 'en')
-                artwork = zip.read('banners.xml')
+                zip = zipfile.ZipFile(StringIO(data))
+                result = zip.read('%s.xml' % 'en').decode()
+                artwork = zip.read('banners.xml').decode()
                 zip.close()
     
             url = self.tvdb_info_link % (tvdb, 'hu')
             data = urllib2.urlopen(url, timeout=30).read()
-                    
-            zip = zipfile.ZipFile(StringIO.StringIO(data))
-            result2 = zip.read('%s.xml' % 'hu')
+            zip = zipfile.ZipFile(StringIO(data))
+            result2 = zip.read('%s.xml' % 'hu').decode()
             zip.close()
 
 
@@ -98,13 +100,13 @@ class seasons:
             premiered = client.parseDOM(item, 'FirstAired')[0]
             if premiered == '' or '-00' in premiered: premiered = '0'
             premiered = client.replaceHTMLCodes(premiered)
-            premiered = premiered.encode('utf-8')
+            premiered = utils.py2_encode(premiered)
             if not premiered == '0': meta.update({'premiered': premiered})
 
             title = client.parseDOM(item, 'EpisodeName')[0]
             if title == '': title = '0'
             title = client.replaceHTMLCodes(title)
-            title = title.encode('utf-8')
+            title = utils.py2_encode(title)
             if not title == '0': meta.update({'title': title})
 
             try: thumb = client.parseDOM(item, 'filename')[0]
@@ -112,14 +114,14 @@ class seasons:
             if not thumb == '': thumb = self.tvdb_image + thumb
             else: thumb = '0'
             thumb = client.replaceHTMLCodes(thumb)
-            thumb = thumb.encode('utf-8')
+            thumb = utils.py2_encode(thumb)
             if not thumb == '0': meta.update({'thumb': thumb})
 
             try: rating = client.parseDOM(item, 'Rating')[0]
             except: rating = ''
             if rating == '': rating = '0'
             rating = client.replaceHTMLCodes(rating)
-            rating = rating.encode('utf-8')
+            rating = utils.py2_encode(rating)
             if not rating == '0': meta.update({'rating': rating})
 
             try: director = client.parseDOM(item, 'Director')[0]
@@ -128,7 +130,7 @@ class seasons:
             director = ' / '.join(director)
             if director == '': director = '0'
             director = client.replaceHTMLCodes(director)
-            director = director.encode('utf-8')
+            director = utils.py2_encode(director)
             if not director == '0': meta.update({'director': director})
 
             try: writer = client.parseDOM(item, 'Writer')[0]
@@ -137,7 +139,7 @@ class seasons:
             writer = ' / '.join(writer)
             if writer == '': writer = '0'
             writer = client.replaceHTMLCodes(writer)
-            writer = writer.encode('utf-8')
+            writer = utils.py2_encode(writer)
             if not writer == '0': meta.update({'writer': writer})
 
             try:
@@ -149,7 +151,7 @@ class seasons:
             label = client.parseDOM(local, 'EpisodeName')[0]
             if label == '': label = '0'
             label = client.replaceHTMLCodes(label)
-            label = label.encode('utf-8')
+            label = utils.py2_encode(label)
             if not label == '0': 
                 meta.update({'label': label})
                 meta.update({'title': label})
@@ -159,7 +161,7 @@ class seasons:
             except: episodeplot = ''
             if episodeplot == '': episodeplot = '0'
             episodeplot = client.replaceHTMLCodes(episodeplot)
-            try: episodeplot = episodeplot.encode('utf-8')
+            try: episodeplot = utils.py2_encode(episodeplot)
             except: pass
             if not episodeplot == '0': meta.update({'plot': episodeplot})
 

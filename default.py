@@ -1,33 +1,32 @@
 # -*- coding: utf-8 -*-
-import xbmc, xbmcgui, urllib, urlparse, json, re, xbmcplugin, os, base64, datetime
-from resources.lib import client, control, cache, metacache
-from resources.lib.BeautifulSoup import BeautifulStoneSoup
-import urlresolver
+import xbmc, xbmcgui, json, re, xbmcplugin, os, base64, datetime, locale
+from resources.lib import client, control, cache, metacache, utils
+import resolveurl as urlresolver
+
+if sys.version_info[0] == 3:
+    import urllib.parse as urlparse
+    from urllib.parse import quote_plus
+    from urllib.parse import unquote_plus
+    from functools import reduce
+else:
+    import urlparse
+    from urllib import quote_plus
+    from urllib import unquote_plus
 
 current_year = datetime.datetime.now().strftime("%Y")
-
-REMOTE_DBG = False
-
-# append pydev remote debugger
-if REMOTE_DBG:
-    # Make pydev debugger works for auto reload.
-    # Note pydevd module need to be copied in XBMC\system\python\Lib\pysrc
-    try:
-        sys.path.append("C:\\Users\\User\\.p2\\pool\\plugins\\org.python.pydev_4.4.0.201510052309\\pysrc")
-        import pydevd # with the addon script.module.pydevd, only use `import pydevd`
-    # stdoutToServer and stderrToServer redirect stdout and stderr to eclipse console
-        pydevd.settrace('localhost', stdoutToServer=True, stderrToServer=True)
-    except ImportError:
-        sys.stderr.write("Error: " +
-            "You must add org.python.pydev.debug.pysrc to your PYTHONPATH.")
-        sys.exit(1)
-
 
 csillag_url = control.setting('mcs_url')
 addon_handle = int(sys.argv[1])
 
+base_path = utils.py2_decode(control.transPath(control.addonInfo('profile')))
+
+try:
+    locale.setlocale(locale.LC_ALL, "")
+except:
+    pass
+
 def just_removed():
-    control.infoDialog(u'A keresett vide\u00F3t elt\u00E1vol\u00EDtott\u00E1k!')
+    control.infoDialog('A keresett videót eltávolították!')
     return
 
 def setviewmode(mode):
@@ -80,21 +79,21 @@ def setviewmode(mode):
     return
 
 def rootFolder():
-    addDir('Filmek',                     'filmek-online', 1, '', '', 'film', 1, '', '', '','','')
-    addDir('Sorozatok',                  'sorozatok-online', 1, '', '', 'sorozat', 1, '', '', '','','')
-    addDir('Keresés',                    '', 7, '', '', '', 1, '', '', '','','')
+    addDir('Filmek', 'filmek-online', 1, '', '', 'film', 1, '', '', '','','')
+    addDir('Sorozatok', 'sorozatok-online', 1, '', '', 'sorozat', 1, '', '', '','','')
+    addDir('Keresés', '', 7, '', '', '', 1, '', '', '','','')
     return
 
 def categoryFolder():
-    addDir('Legfrissebb',                url, 2, '', '', description, 1, '/legfrissebb', '', 'not', '','')
-    addDir('Legnézettebb',               url, 2, '', '', description, 1, '/legnezettebb', '', 'not', '','')
-    addDir('Legjobbra értékelt',         url, 2, '', '', description, 1, '/legjobbra-ertekelt', '', 'not', '','')
-    addDir('Kategóriák',                 url, 12, '', '', description, 1, '', '', '', '','')
+    addDir('Legfrissebb', url, 2, '', '', description, 1, '/legfrissebb', '', 'not', '','')
+    addDir('Legnézettebb', url, 2, '', '', description, 1, '/legnezettebb', '', 'not', '','')
+    addDir('Legjobbra értékelt', url, 2, '', '', description, 1, '/legjobbra-ertekelt', '', 'not', '','')
+    addDir('Kategóriák', url, 12, '', '', description, 1, '', '', '', '','')
     return
 
 def searchFolder():
-    addDir('Filmek',                    '', 5, '', '', 'film', 1, '', '', '','','')
-    addDir('Sorozatok',                    '', 5, '', '', 'sorozat', 1, '', '', '','','')
+    addDir('Filmek', '', 5, '', '', 'film', 1, '', '', '','','')
+    addDir('Sorozatok', '', 5, '', '', 'sorozat', 1, '', '', '','','')
 
 def listak():     
     i = urlparse.urljoin(csillag_url, url + category + '?page=' + str(page))
@@ -120,8 +119,8 @@ def kategoriak():
     genres = client.parseDOM(r, 'strong')
     result = zip(genres, links)
     for i in result:
-        title = BeautifulStoneSoup(i[0], convertEntities=BeautifulStoneSoup.HTML_ENTITIES)
-        title = (title.text).encode("UTF-8")
+        title = client.replaceHTMLCodes(i[0])
+        title = utils.py2_encode(title)
         addDir(title, i[1], 2, '', '', description, 1, '', '', '', '', '')
     return
     
@@ -129,7 +128,7 @@ def kategoriak():
 def kereses(search_text, page, description):
     type = '1' if description == 'film' else '0'
     search_url = 'search_term=' + search_text + '&search_type=' + type + '&search_where=0&search_rating_start=1&search_rating_end=10&search_year_from=1900&search_year_to=' + current_year
-    search_url = base64.b64encode(search_url)
+    search_url = base64.b64encode(search_url.encode()).decode()
     query = urlparse.urljoin(csillag_url, '/kereses/' + search_url + '?page=' + str(page))
     items, next = getMovies(query)
     listMovies(items, description)
@@ -146,7 +145,6 @@ def forrasok_Film():
     hosts, youtube_id, meta = getMoviesource(url, name, iconimage)
     if len(hosts) == 0: return
     hostDict = getConstants()
-    
     if not youtube_id == '0':
         addFile('[COLOR orange]' + name + ' - ' + 'ELŐZETES''[/COLOR]', youtube_id, 13, {'title': name, 'thumb': meta['thumb'], 'fanart': meta['fanart'], 'plot': meta['plot']})
     
@@ -161,7 +159,7 @@ def forrasok_Film():
             elif '/EN_HU.png' or '/SUB_HU.png' in item: lang = '[COLOR red]FELIRAT[/COLOR]'
             elif '/EN.png' or '/SUB_EN.png' or '/MAS.png' in item: lang = '[COLOR yellow]NINCS FELIRAT[/COLOR]'
             if host.lower().split('.')[0] in hostDict:
-                addFile('[COLOR blue]' + (quality.upper()).encode('utf-8') + '[/COLOR]' + ' | ' + lang + ' | ' + (host.upper()).encode('utf-8'), link, 4, meta)
+                addFile('[COLOR blue]' + utils.py2_encode(quality.upper()) + '[/COLOR]' + ' | ' + lang + ' | ' + utils.py2_encode(host.upper()), link, 4, meta)
         except:
             pass
         
@@ -175,8 +173,8 @@ def getMoviesource(url, title, poster):
     
     try: plot = (client.parseDOM(result, 'p')[0]).replace('\n','').strip()
     except: plot = '0'
-    plot = BeautifulStoneSoup(plot, convertEntities=BeautifulStoneSoup.HTML_ENTITIES)
-    plot = (plot.text).encode("UTF-8")
+    plot = client.replaceHTMLCodes(plot)
+    plot = utils.py2_encode(plot)
     
     try: imdb_id = re.compile('imdb.com/title/(tt[0-9]+)').findall(result)[0]
     except: imdb_id = '0'
@@ -193,7 +191,7 @@ def getMoviesource(url, title, poster):
         duration = str(duration)
     except: duration = '0'
     
-    hosts = []      
+    hosts = []
     try:
         hosts_url = client.parseDOM(result, 'div', attrs={'class': 'small-12 medium-7 small-centered columns'})[0]    
         hosts_url = client.parseDOM(hosts_url, 'a', ret='href')[0]    
@@ -217,11 +215,10 @@ def getMoviesource(url, title, poster):
     parsed = urlparse.urlparse(hosts_url)
     domain = parsed.scheme + "://" + parsed.netloc
     
-    meta = {'imdb': imdb_id, 'plot': plot, 'duration': duration, 'title': name, 'label': name, 'poster': poster, 'fanart': poster, 'thumb': poster, 'url': domain}
+    meta = {'imdb': imdb_id, 'plot': plot, 'duration': duration, 'title': name, 'label': name, 'poster': poster, 'fanart': poster, 'thumb': poster, 'url': domain} 
     try:
         meta = metacache.get(get_meta, 720, meta, 'movie')
     except: pass
-    
     return (hosts, youtube_id, meta)
 
 def forrasok_Sorozat():
@@ -242,7 +239,7 @@ def forrasok_Sorozat():
     hosts = filter
 
     for item in hosts:
-        try:
+        #try:
             link = client.parseDOM(item, 'a', ret='href')[-1]           
             link = urlparse.urljoin(metadata['url'], link)
             host = client.parseDOM(item, 'a', ret='title')[0]
@@ -252,15 +249,34 @@ def forrasok_Sorozat():
             elif '/EN_HU.png' or '/SUB_HU.png' in item: lang = '[COLOR red]FELIRAT[/COLOR]'
             elif '/EN.png' or '/SUB_EN.png' or '/MAS.png' in item: lang = '[COLOR yellow]NINCS FELIRAT[/COLOR]'
             if host.lower().split('.')[0] in hostDict:
-                addFile('[COLOR blue]' + (quality.upper()).encode('utf-8') + '[/COLOR]' + ' | ' + lang + ' | ' + (host.upper()).encode('utf-8'), link, 4, metadata)
-        except:
-            pass
+                addFile('[COLOR blue]' + utils.py2_encode(quality.upper()) + '[/COLOR]' + ' | ' + lang + ' | ' + utils.py2_encode(host.upper()), link, 4, metadata)
+        #except:
+        #    pass
                 
     viewmode = setviewmode('movie_folder')
     if viewmode != 0:
         xbmc.executebuiltin('Container.SetViewMode(%s)' %viewmode)
     return
 
+def getSearches():
+    searchFile = os.path.join(base_path, "%ssearch.history" % description)
+    addDir('[COLOR blue]Új keresés[/COLOR]', '', 15, '', '', description, 1, '', '', '','','')
+    try:
+        file = open(searchFile, "r")
+        olditems = file.read().splitlines()
+        file.close()
+        items = list(set(olditems))
+        items.sort(key=locale.strxfrm)
+        if len(items) != len(olditems):
+            file = open(searchFile, "w")
+            file.write("\n".join(items))
+            file.close()
+        for item in items:
+            addDir(item, '', 16, '', '', description, 1, '', '', '','','')
+        if len(items) > 0:
+            addDir('[COLOR red]Keresési előzmények törlése[/COLOR]', '', 17, '', '', description, 1, '', '', '','','')
+    except:
+        pass
 
 def open_search_panel():
     search_text = ''
@@ -269,9 +285,21 @@ def open_search_panel():
  
     if (keyb.isConfirmed()):
         search_text = keyb.getText()
-        kereses(search_text, 1, description)
+        if search_text != '':
+            searchFile = os.path.join(base_path, "%ssearch.history" % description)
+            if not os.path.exists(base_path):
+                os.mkdir(base_path)
+            file = open(searchFile, "a")
+            file.write("%s\n" % search_text)
+            file.close()
+            kereses(search_text, 1, description)
         return
     
+def deleteSearchHistory():
+    searchFile = os.path.join(base_path, "%ssearch.history" % description)
+    if os.path.exists(searchFile):
+        os.remove(searchFile)
+    getSearches()
 ##########
 
 def getMovies(url):
@@ -295,14 +323,14 @@ def listMovies(items, type):
             if type == 'film':
                 title = client.parseDOM(item, 'div', attrs={'class': 'cover-surface'})[0]
                 title = client.parseDOM(title, 'strong')[0]
-                title = BeautifulStoneSoup(title, convertEntities=BeautifulStoneSoup.HTML_ENTITIES)
-                title = (title.text).encode("UTF-8")
+                title = client.replaceHTMLCodes(title)
+                title = utils.py2_encode(title)
                 addDir(title, link, 3, img, control.addonFanart(), '', 1, '', '', '', '','')
             elif type == 'sorozat':
                 title = client.parseDOM(item, 'div', attrs={'class': 'title'})[0]
                 title = (client.parseDOM(title, 'h2')[0]).replace('\n','').strip()
-                title = BeautifulStoneSoup(title, convertEntities=BeautifulStoneSoup.HTML_ENTITIES)
-                title = (title.text).encode("UTF-8")
+                title = client.replaceHTMLCodes(title)
+                title = utils.py2_encode(title)
                 title = re.compile('(.*)\:\s(.*)').findall(title)[0]
                 addDir(title[0]  + ' : ' + '[COLOR yellow]' + title[1] + '[/COLOR]', link, 9, img, control.addonFanart(), '', 1, '', '', '', title[0],'')       
         except:
@@ -310,7 +338,7 @@ def listMovies(items, type):
     return
 
 def Episodes():
-    try:
+    #try:
         try: season = re.compile('\]([0-9]+).*?évad').findall(name)[0]
         except: season= '1'
         episodes, youtube_id, meta = getEpisodes(url, season, iconimage)
@@ -331,7 +359,7 @@ def Episodes():
                         label = '%sx%02d . %s %s' % (meta2['season'], int(episode), 'Epizod', episode)
                 else:
                     label = '%sx%02d . %s' % (meta2['season'], int(episode), meta2['label'])
-                addDir2(label, item.encode('utf-8'), 10, meta2)
+                addDir2(label, utils.py2_encode(item), 10, meta2)
             except:
                 pass
         
@@ -339,8 +367,8 @@ def Episodes():
         if viewmode != 0:
             xbmc.executebuiltin('Container.SetViewMode(%s)' %viewmode)
         return
-    except:
-        return
+    #except:
+    #    return
 
 
 def getEpisodes(url, season, poster):
@@ -348,8 +376,8 @@ def getEpisodes(url, season, poster):
     
     try: plot = (client.parseDOM(result, 'p')[0]).replace('\n','').strip()
     except: plot = '0'
-    plot = BeautifulStoneSoup(plot, convertEntities=BeautifulStoneSoup.HTML_ENTITIES)
-    plot = (plot.text).encode("UTF-8")
+    plot = client.replaceHTMLCodes(plot)
+    plot = utils.py2_encode(plot)
 
     try: imdb_id = re.compile('imdb.com/title/(tt[0-9]+)').findall(result)[0]
     except: imdb_id = '0'
@@ -380,7 +408,6 @@ def getEpisodes(url, season, poster):
     domain = parsed.scheme + "://" + parsed.netloc
 
     meta = {'imdb': imdb_id, 'plot': plot, 'duration': duration, 'title': title, 'label': title, 'poster': poster, 'fanart': poster, 'thumb': poster, 'season': season, 'url': domain}
-
     try:
         meta = metacache.get(get_meta, 720, meta, 'season', season)
     except:
@@ -404,7 +431,8 @@ def getvideo():
     label = metadata['label']
     thumbnailimage = metadata['thumb']
     domain = metadata['url']
-    videoitem = xbmcgui.ListItem(label=label, thumbnailImage=thumbnailimage)
+    videoitem = xbmcgui.ListItem(label=label)
+    videoitem.setArt({'thumb': thumbnailimage})
     videoitem.setInfo(type='Video', infoLabels=metadata)
     try:
         xbmc.Player().play(getMovieUrl(url, domain), videoitem)
@@ -434,7 +462,7 @@ def getMovieUrl(url, domain):
                 pass
         if top_url == [] or top_url == None: raise Exception()
         direct_url = urlresolver.resolve(top_url)
-        if isinstance(direct_url, basestring):
+        if isinstance(direct_url, str) or isinstance(direct_url, basestring):
             control.idle()
             return direct_url
         else:
@@ -472,9 +500,9 @@ def get_meta(meta, type, tvshow=None):
 
 
 def addDir(name, url, mode, iconimage, fanart, description, page, category, year, genre, title, orig_title):
-    u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&category="+str(category)+"&page="+str(page)+"&name="+urllib.quote_plus(name)+"&iconimage="+urllib.quote_plus(iconimage)+"&fanart="+urllib.quote_plus(fanart)+"&description="+urllib.quote_plus(description)+"&year="+urllib.quote_plus(year)+"&genre="+urllib.quote_plus(genre)+"&title="+urllib.quote_plus(title)+"&orig_title="+urllib.quote_plus(orig_title)
+    u=sys.argv[0]+"?url="+quote_plus(url)+"&mode="+str(mode)+"&category="+str(category)+"&page="+str(page)+"&name="+quote_plus(name)+"&iconimage="+quote_plus(iconimage)+"&fanart="+quote_plus(fanart)+"&description="+quote_plus(description)+"&year="+quote_plus(year)+"&genre="+quote_plus(genre)+"&title="+quote_plus(title)+"&orig_title="+quote_plus(orig_title)
     ok=True
-    liz=xbmcgui.ListItem(name, iconImage=iconimage, thumbnailImage=iconimage)
+    liz=xbmcgui.ListItem(name)
     liz.setArt({'icon': iconimage, 'thumb': iconimage, 'poster': iconimage})
     liz.setInfo( type="Video", infoLabels={ "Title": name, "Plot": description, "Year": year, "Genre": genre } )
     liz.setProperty( "Fanart_Image", fanart )
@@ -485,11 +513,11 @@ def addDir(name, url, mode, iconimage, fanart, description, page, category, year
 def addDir2(name, url, mode, meta):
     try: poster = meta['poster']
     except: poster = ''
-    sysmeta = urllib.quote_plus(json.dumps(meta))
-    u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&name="+urllib.quote_plus(name)+"&meta="+sysmeta
+    sysmeta = quote_plus(json.dumps(meta))
+    u=sys.argv[0]+"?url="+quote_plus(url)+"&mode="+str(mode)+"&name="+quote_plus(name)+"&meta="+sysmeta
     ok=True
-    liz=xbmcgui.ListItem(name, iconImage=meta['thumb'], thumbnailImage=meta['thumb'])
-    liz.setArt({'icon': poster, 'thumb': poster, 'poster': poster})
+    liz=xbmcgui.ListItem(name) #, iconImage=meta['thumb'], thumbnailImage=meta['thumb'])
+    liz.setArt({'icon': meta['thumb'], 'thumb': meta['thumb'], 'poster': poster})
     liz.setInfo( type="Video", infoLabels= meta )
     if 'fanart' in meta and not meta['fanart'] == '0':
         liz.setProperty('Fanart_Image', meta['fanart'])
@@ -505,11 +533,11 @@ def addDir2(name, url, mode, meta):
 def addFile(name, url, mode, meta):
     try: poster = meta['poster']
     except: poster = ''
-    sysmeta = urllib.quote_plus(json.dumps(meta))
-    u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&name="+urllib.quote_plus(name)+"&meta="+sysmeta
+    sysmeta = quote_plus(json.dumps(meta))
+    u=sys.argv[0]+"?url="+quote_plus(url)+"&mode="+str(mode)+"&name="+quote_plus(name)+"&meta="+sysmeta
     ok=True
-    liz=xbmcgui.ListItem(name, iconImage=meta['thumb'], thumbnailImage=meta['thumb'])
-    liz.setArt({'icon': poster, 'thumb': poster, 'poster': poster})
+    liz=xbmcgui.ListItem(name) #, iconImage=meta['thumb'], thumbnailImage=meta['thumb'])
+    liz.setArt({'icon': meta['thumb'], 'thumb': meta['thumb'], 'poster': poster})
     liz.setInfo( type="Video", infoLabels= meta )
     liz.setProperty('Video', 'true')
     if 'fanart' in meta and not meta['fanart'] == '0':
@@ -553,19 +581,19 @@ category = ''
 search_text = ''
 
 try:
-    url = urllib.unquote_plus(params["url"])
+    url = unquote_plus(params["url"])
 except:
     pass
 try:
-    name = urllib.unquote_plus(params["name"])
+    name = unquote_plus(params["name"])
 except:
     pass
 try:
-    title = urllib.unquote_plus(params["title"])
+    title = unquote_plus(params["title"])
 except:
     pass
 try:
-    iconimage = urllib.unquote_plus(params["iconimage"])
+    iconimage = unquote_plus(params["iconimage"])
 except:
     pass
 try:        
@@ -577,43 +605,43 @@ try:
 except:
     pass
 try:        
-    fanart = urllib.unquote_plus(params["fanart"])
+    fanart = unquote_plus(params["fanart"])
 except:
     pass
 try:        
-    description = urllib.unquote_plus(params["description"])
+    description = unquote_plus(params["description"])
 except:
     pass
 try:        
-    category = urllib.unquote_plus(params["category"])
+    category = unquote_plus(params["category"])
 except:
     pass
 try:        
-    search_text = urllib.unquote_plus(params["category"])
+    search_text = unquote_plus(params["category"])
 except:
     pass
 try:        
-    host = urllib.unquote_plus(params["host"])
+    host = unquote_plus(params["host"])
 except:
     pass
 try:        
-    year = urllib.unquote_plus(params["year"])
+    year = unquote_plus(params["year"])
 except:
     pass
 try:        
-    genre = urllib.unquote_plus(params["genre"])
+    genre = unquote_plus(params["genre"])
 except:
     pass
 try:        
-    season = urllib.unquote_plus(params["season"])
+    season = unquote_plus(params["season"])
 except:
     pass
 try:        
-    orig_title = urllib.unquote_plus(params["orig_title"])
+    orig_title = unquote_plus(params["orig_title"])
 except:
     pass
 try:
-    meta = urllib.unquote_plus(params["meta"])
+    meta = unquote_plus(params["meta"])
 except:
     pass
 
@@ -628,7 +656,7 @@ elif mode == 3:
 elif mode == 4:
     getvideo()
 elif mode == 5:
-    open_search_panel()
+    getSearches()
 elif mode == 6:
     kereses(search_text, page, description)
 elif mode == 7:
@@ -643,5 +671,11 @@ elif mode == 13:
     youtube_trailer()
 elif mode == 14:
     cache.clear()
+elif mode == 15:
+    open_search_panel()
+elif mode == 16:
+    kereses(name, 1, description)
+elif mode == 17:
+    deleteSearchHistory()
 
 xbmcplugin.endOfDirectory(int(sys.argv[1]))
