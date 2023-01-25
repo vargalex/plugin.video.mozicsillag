@@ -1,3 +1,7 @@
+V0.1.4
+
+- Nexus kompatibilitás
+
 V0.1.2
 - Forrasoldal cim valtozas
 
