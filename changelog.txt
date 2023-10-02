@@ -1,5 +1,7 @@
-V0.1.4
+V0.1.5
+- busydialognocancel használata a deprecated busydialog helyett
 
+V0.1.4
 - Nexus kompatibilitás
 
 V0.1.2

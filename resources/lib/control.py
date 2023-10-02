@@ -144,11 +144,11 @@ def refresh():
 
 
 def idle():
-    return execute('Dialog.Close(busydialog)')
+    return execute('Dialog.Close(busydialognocancel)')
 
 
 def busy():
-    return execute('ActivateWindow(busydialog)')
+    return execute('ActivateWindow(busydialognocancel)')
 
 
 def queueItem():
