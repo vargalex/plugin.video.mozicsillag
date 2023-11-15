@@ -454,7 +454,13 @@ def getMovieUrl(url, domain):
         except:
             pass
         
-        if top_url == []:
+        if top_url == [''] or top_url == []:
+            try:
+                url_id = re.search(r"'search','(.+?)',", result).group(1)
+            except:
+                url_id = None
+            if url_id:
+                url = domain + "/watch-special-" + url_id
             try:
                 result = client.request(url, output='geturl')
                 if not domain in result: top_url = result
