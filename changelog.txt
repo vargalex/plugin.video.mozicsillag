@@ -1,3 +1,9 @@
+V1.0.9
+- BugFix - a lényeg kimaradt a commitból
+
+V1.0.8
+- BugFix
+
 V1.0.7
 - Forrás változás követése
 

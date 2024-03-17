@@ -16,7 +16,7 @@ else:
     from urllib2 import HTTPError as HTTPError
     import cookielib
 
-def request(url, close=True, error=False, proxy=None, post=None, headers=None, mobile=False, safe=False, referer=None, cookie=None, output='', timeout='30'):
+def request(url, close=True, redirect=True, error=False, proxy=None, post=None, headers=None, mobile=False, safe=False, referer=None, cookie=None, output='', timeout='30'):
     try:
         handlers = []
         if not proxy == None:
@@ -60,7 +60,20 @@ def request(url, close=True, error=False, proxy=None, post=None, headers=None, m
             pass
         elif not cookie == None:
             headers['Cookie'] = cookie
-        
+
+        if redirect == False:
+            class NoRedirection(urllib2.HTTPErrorProcessor):
+                def http_response(self, request, response):
+                    print("Redirect response")
+                    return response
+                https_response = http_response
+
+            opener = urllib2.build_opener(NoRedirection)
+            opener = urllib2.install_opener(opener)
+
+            try: del headers['Referer']
+            except: pass
+
         if sys.version_info[0] == 3:
             request = urllib2.Request(url, data=(post.encode('utf-8') if post != None else post), headers=headers)
         else:
@@ -254,11 +267,7 @@ def replaceHTMLCodes(txt):
     txt = txt.replace("<br>", "\n")
     txt = txt.replace("<br />", "\n")
     txt = txt.replace("<br/>", "\n")
-    txt = txt.replace("&aacute;", "á")
-    txt = txt.replace("&eacute;", "é")
-    txt = txt.replace("&iacute;", "í")
     txt = txt.replace("&EACUTE;", "É")
-    txt = txt.replace("<br/>", "\n")
     return txt
 
 
