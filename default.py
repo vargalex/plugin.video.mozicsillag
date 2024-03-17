@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import xbmc, xbmcgui, json, re, xbmcplugin, os, base64, datetime, locale
 from resources.lib import client, control, cache, metacache, utils
-import resolveurl as urlresolver
+import resolveurl
 
 if sys.version_info[0] == 3:
     import urllib.parse as urlparse
@@ -26,7 +26,7 @@ except:
     pass
 
 def just_removed():
-    control.infoDialog('A keresett videót eltávolították!')
+    control.infoDialog('A keresett videót eltávolították, vagy sikertelen a resolveURL feloldás!')
     return
 
 def setviewmode(mode):
@@ -144,22 +144,19 @@ def kereses(search_text, page, description):
 def forrasok_Film():
     hosts, youtube_id, meta = getMoviesource(url, name, iconimage)
     if len(hosts) == 0: return
-    hostDict = getConstants()
     if not youtube_id == '0':
         addFile('[COLOR orange]' + name + ' - ' + 'ELŐZETES''[/COLOR]', youtube_id, 13, {'title': name, 'thumb': meta['thumb'], 'fanart': meta['fanart'], 'plot': meta['plot']})
     
     for item in hosts:
         try:
             link = client.parseDOM(item, 'a', ret='href')[-1]           
-            link = urlparse.urljoin(meta['url'], link)
-            host = client.parseDOM(item, 'a', ret='title')[0]
+            host = client.parseDOM(item, 'span')[0]
             quality = host.split()[2]         
             host = host.split()[0]
             if '/HU.png' in item: lang = '[COLOR green]SZINKRON[/COLOR]'
             elif '/EN_HU.png' or '/SUB_HU.png' in item: lang = '[COLOR red]FELIRAT[/COLOR]'
             elif '/EN.png' or '/SUB_EN.png' or '/MAS.png' in item: lang = '[COLOR yellow]NINCS FELIRAT[/COLOR]'
-            if host.lower().split('.')[0] in hostDict:
-                addFile('[COLOR blue]' + utils.py2_encode(quality.upper()) + '[/COLOR]' + ' | ' + lang + ' | ' + utils.py2_encode(host.upper()), link, 4, meta)
+            addFile('[COLOR blue]' + utils.py2_encode(quality.upper()) + '[/COLOR]' + ' | ' + lang + ' | ' + utils.py2_encode(host.upper()), link, 4, meta)
         except:
             pass
         
@@ -191,67 +188,28 @@ def getMoviesource(url, title, poster):
         duration = str(duration)
     except: duration = '0'
     
-    hosts = []
-    try:
-        hosts_url = client.parseDOM(result, 'div', attrs={'class': 'small-12 medium-7 small-centered columns'})[0]    
-        hosts_url = client.parseDOM(hosts_url, 'a', ret='href')[0]    
-        hosts = client.request(hosts_url)
-        hosts = client.parseDOM(hosts, 'div', attrs={'class': 'links_holder.*?'})[0]
-        hosts = client.parseDOM(hosts, 'div', attrs={'class': 'panel'})
-        filter = []
-        filter += [i for i in hosts if 'DVDRip' in i]
-        filter += [i for i in hosts if 'TVRip' in i]
-        filter += [i for i in hosts if (not 'TVRip' in i) and (not 'DVDRip' in i)]
-        hosts = filter
-        
-        filter = []
-        filter += [i for i in hosts if '/HU.png' in i]
-        filter += [i for i in hosts if ('/EN_HU.png' in i) or ('/SUB_HU.png' in i)]
-        filter += [i for i in hosts if ('/EN.png' in i) or ('/SUB_EN.png' in i) or ('/MAS.png' in i)]
-        hosts = filter
-    except:
-        pass  
+    hosts = client.parseDOM(result, 'div', attrs={'class': 'panel'})
     
-    parsed = urlparse.urlparse(hosts_url)
-    domain = parsed.scheme + "://" + parsed.netloc
-    
-    meta = {'imdb': imdb_id, 'plot': plot, 'duration': duration, 'title': name, 'label': name, 'poster': poster, 'fanart': poster, 'thumb': poster, 'url': domain} 
+    meta = {'imdb': imdb_id, 'plot': plot, 'duration': duration, 'title': name, 'label': name, 'poster': poster, 'fanart': poster, 'thumb': poster}
     try:
         meta = metacache.get(get_meta, 720, meta, 'movie')
     except: pass
     return (hosts, youtube_id, meta)
 
 def forrasok_Sorozat():
-    hostDict = getConstants()
     metadata = json.loads(meta)
-    
+
     hosts = client.parseDOM(url, 'div', attrs={'class': 'panel\s*?'})
-    filter = []
-    filter += [i for i in hosts if 'DVDRip' in i]
-    filter += [i for i in hosts if 'TVRip' in i]
-    filter += [i for i in hosts if (not 'TVRip' in i) and (not 'DVDRip' in i)]
-    hosts = filter
-    
-    filter = []
-    filter += [i for i in hosts if '/HU.png' in i]
-    filter += [i for i in hosts if ('/EN_HU.png' in i) or ('/SUB_HU.png' in i)]
-    filter += [i for i in hosts if ('/EN.png' in i) or ('/SUB_EN.png' in i) or ('/MAS.png' in i)]
-    hosts = filter
 
     for item in hosts:
-        #try:
-            link = client.parseDOM(item, 'a', ret='href')[-1]           
-            link = urlparse.urljoin(metadata['url'], link)
-            host = client.parseDOM(item, 'a', ret='title')[0]
-            quality = host.split()[2]         
-            host = host.split()[0]
-            if '/HU.png' in item: lang = '[COLOR green]SZINKRON[/COLOR]'
-            elif '/EN_HU.png' or '/SUB_HU.png' in item: lang = '[COLOR red]FELIRAT[/COLOR]'
-            elif '/EN.png' or '/SUB_EN.png' or '/MAS.png' in item: lang = '[COLOR yellow]NINCS FELIRAT[/COLOR]'
-            if host.lower().split('.')[0] in hostDict:
-                addFile('[COLOR blue]' + utils.py2_encode(quality.upper()) + '[/COLOR]' + ' | ' + lang + ' | ' + utils.py2_encode(host.upper()), link, 4, metadata)
-        #except:
-        #    pass
+        link = client.parseDOM(item, 'a', ret='href')[-1]
+        host = client.parseDOM(item, 'span')[0]
+        quality = host.split()[2]
+        host = host.split()[0]
+        if '/HU.png' in item: lang = '[COLOR green]SZINKRON[/COLOR]'
+        elif '/EN_HU.png' or '/SUB_HU.png' in item: lang = '[COLOR red]FELIRAT[/COLOR]'
+        elif '/EN.png' or '/SUB_EN.png' or '/MAS.png' in item: lang = '[COLOR yellow]NINCS FELIRAT[/COLOR]'
+        addFile('[COLOR blue]' + utils.py2_encode(quality.upper()) + '[/COLOR]' + ' | ' + lang + ' | ' + utils.py2_encode(host.upper()), link, 4, metadata)
                 
     viewmode = setviewmode('movie_folder')
     if viewmode != 0:
@@ -394,20 +352,9 @@ def getEpisodes(url, season, poster):
         duration = str(duration)
     except: duration = '0'
 
-    episodes = []
-    try:
-        hosts_url = client.parseDOM(result, 'div', attrs={'class': 'small-12 medium-7 small-centered columns'})[0]
-        hosts_url = client.parseDOM(hosts_url, 'a', ret='href')[0]    
-        episodes = client.request(hosts_url)
-        episodes = client.parseDOM(episodes, 'div', attrs={'class': 'links_holder.*?'})[0]
-        episodes = client.parseDOM(episodes, 'div', attrs={'class': 'accordion-episodes.*?'})
-    except:
-        pass
+    episodes = client.parseDOM(result, 'dd', attrs={'class': 'accordion-navigation'})
 
-    parsed = urlparse.urlparse(hosts_url)
-    domain = parsed.scheme + "://" + parsed.netloc
-
-    meta = {'imdb': imdb_id, 'plot': plot, 'duration': duration, 'title': title, 'label': title, 'poster': poster, 'fanart': poster, 'thumb': poster, 'season': season, 'url': domain}
+    meta = {'imdb': imdb_id, 'plot': plot, 'duration': duration, 'title': title, 'label': title, 'poster': poster, 'fanart': poster, 'thumb': poster, 'season': season}
     try:
         meta = metacache.get(get_meta, 720, meta, 'season', season)
     except:
@@ -430,50 +377,32 @@ def getvideo():
     metadata = json.loads(meta)
     label = metadata['label']
     thumbnailimage = metadata['thumb']
-    domain = metadata['url']
     videoitem = xbmcgui.ListItem(label=label)
     videoitem.setArt({'thumb': thumbnailimage})
     videoitem.setInfo(type='Video', infoLabels=metadata)
     try:
-        xbmc.Player().play(getMovieUrl(url, domain), videoitem)
+        xbmc.Player().play(getMovieUrl(url), videoitem)
     except:
         just_removed()
 
 
-def getMovieUrl(url, domain):
+def getMovieUrl(url):
     try:
         control.busy()
-        result = client.request(url)
-
-        top_url = []
-        try:
-            top_url = client.parseDOM(result, 'div', attrs={'id': 'video-holder'})
-            if len(top_url) == 0: raise Exception()
-            try: top_url = client.parseDOM(top_url, 'iframe', ret='src')[0]
-            except: top_url = client.parseDOM(top_url, 'IFRAME', ret='SRC')[0]
-        except:
-            pass
-        
-        if top_url == [''] or top_url == []:
-            try:
-                url_id = re.search(r"'search','(.+?)',", result).group(1)
-            except:
-                url_id = None
-            if url_id:
-                url = domain + "/watch-special-" + url_id
-            try:
-                result = client.request(url, output='geturl')
-                if not domain in result: top_url = result
-            except:
-                pass
-        if top_url == [] or top_url == None: raise Exception()
-        direct_url = urlresolver.resolve(top_url)
-        if isinstance(direct_url, str) or isinstance(direct_url, basestring):
-            control.idle()
-            return direct_url
+        result = client.request(url, redirect=False, output='headers')
+        hmf = resolveurl.HostedMediaFile(result['location'])
+        if hmf:
+            direct_url = hmf.resolve()
+            if isinstance(direct_url, str) or isinstance(direct_url, basestring):
+                control.idle()
+                return direct_url
+            else:
+                control.idle()
+                just_removed()
         else:
+            xbmc.log('Mozicsillag: ResolveURL could not resolve url: %s' % result['location'], xbmc.LOGINFO)
+            xbmcgui.Dialog().notification("URL feloldás hiba", "URL feloldása sikertelen a %s host-on" % urlparse.urlparse(result['location']).hostname)
             control.idle()
-            just_removed()
     except: 
         control.idle()
         just_removed()
@@ -482,8 +411,8 @@ def getMovieUrl(url, domain):
 
 def getConstants():
         try:
-            try: hosts = urlresolver.relevant_resolvers(order_matters=True)
-            except: hosts = urlresolver.plugnplay.man.implementors(urlresolver.UrlResolver)
+            try: hosts = resolveurl.relevant_resolvers(order_matters=True)
+            except: hosts = resolveurl.plugnplay.man.implementors(resolveurl.UrlResolver)
             hostDict = [i.domains for i in hosts if not '*' in i.domains]
             hostDict = [i.lower() for i in reduce(lambda x, y: x+y, hostDict)]
             hostDict = [i.split('.')[0] for i in hostDict]
