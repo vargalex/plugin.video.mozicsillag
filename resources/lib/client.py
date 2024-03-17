@@ -254,6 +254,11 @@ def replaceHTMLCodes(txt):
     txt = txt.replace("<br>", "\n")
     txt = txt.replace("<br />", "\n")
     txt = txt.replace("<br/>", "\n")
+    txt = txt.replace("&aacute;", "á")
+    txt = txt.replace("&eacute;", "é")
+    txt = txt.replace("&iacute;", "í")
+    txt = txt.replace("&EACUTE;", "É")
+    txt = txt.replace("<br/>", "\n")
     return txt
 
 

@@ -156,7 +156,7 @@ def forrasok_Film():
             if '/HU.png' in item: lang = '[COLOR green]SZINKRON[/COLOR]'
             elif '/EN_HU.png' or '/SUB_HU.png' in item: lang = '[COLOR red]FELIRAT[/COLOR]'
             elif '/EN.png' or '/SUB_EN.png' or '/MAS.png' in item: lang = '[COLOR yellow]NINCS FELIRAT[/COLOR]'
-            addFile('[COLOR blue]' + utils.py2_encode(quality.upper()) + '[/COLOR]' + ' | ' + lang + ' | ' + utils.py2_encode(host.upper()), link, 4, meta)
+            addFile('[COLOR blue]' + utils.py2_encode(client.replaceHTMLCodes(quality.upper())) + '[/COLOR]' + ' | ' + lang + ' | ' + utils.py2_encode(host.upper()), link, 4, meta)
         except:
             pass
         
@@ -188,7 +188,8 @@ def getMoviesource(url, title, poster):
         duration = str(duration)
     except: duration = '0'
     
-    hosts = client.parseDOM(result, 'div', attrs={'class': 'panel'})
+    links = client.parseDOM(result, 'div', attrs={'class': 'row movie-links-holder'})[0]
+    hosts = client.parseDOM(links, 'div', attrs={'class': 'panel'})
     
     meta = {'imdb': imdb_id, 'plot': plot, 'duration': duration, 'title': name, 'label': name, 'poster': poster, 'fanart': poster, 'thumb': poster}
     try:
